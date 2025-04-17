@@ -47,3 +47,7 @@ headers = HEADERS
 PROXY = ""
 QUEUE = ""
 QUEUE_NAME_URL = f"{PROJECT_NAME}_urls"
+
+
+# ─── Export Configuration ──────────────────────────────────────────────────
+FILE_NAME_FULLDUMP = "dirk_products.csv"  
