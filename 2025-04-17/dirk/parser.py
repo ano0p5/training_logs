@@ -1,73 +1,91 @@
 import os
 import json
 import re
-from parsel import Selector
+import logging
 from datetime import datetime
+from parsel import Selector
 from mongoengine import connect
 from mongoengine.errors import NotUniqueError
-from settings import MONGO_DB, MONGO_URI
-from items import ProductItem 
+from settings import MONGO_DB, MONGO_URI, MONGO_COLLECTION_DATA, HEADERS
+from items import ProductItem
+import requests
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 class Parser:
-    def __init__(self, file_paths, competitor_name="Dirk", country="nl"):
-        self.file_paths = file_paths
-        self.competitor_name = competitor_name
-        self.country = country
+    def __init__(self, filePaths):
+        self.filePaths = filePaths
         connect(db=MONGO_DB, host=MONGO_URI)
+        self.mongo = None 
 
-    def extract_nutritional_values(self, html_content):
+    def extractJsonData(self, htmlContent):
         try:
-            json_data = json.loads(html_content)
-            product_details = next((item for item in json_data if isinstance(item, dict) and item.get("standardPackagingUnit") == 33), None)
-            if product_details and "nutritionalValues" in product_details:
-                nutritional_values_ref_index = product_details["nutritionalValues"]
-                if isinstance(nutritional_values_ref_index, int) and len(json_data) > nutritional_values_ref_index and isinstance(json_data[nutritional_values_ref_index], list):
-                    nutritional_parts = []
-                    for index in json_data[nutritional_values_ref_index]:
-                        if isinstance(index, int) and len(json_data) > index and isinstance(json_data[index], dict) and "text" in json_data[index] and "value" in json_data[index]:
-                            text_index = json_data[index]["text"]
-                            value_index = json_data[index]["value"]
-                            if isinstance(text_index, int) and len(json_data) > text_index and isinstance(json_data[text_index], str) and \
-                               isinstance(value_index, (int, float, str)) and len(json_data) > value_index and isinstance(json_data[value_index], str):
-                                nutritional_parts.append(f"{json_data[text_index]}:{json_data[value_index]}")
-                            elif isinstance(text_index, int) and len(json_data) > text_index and isinstance(json_data[text_index], str) and \
-                                 isinstance(value_index, (int, float, str)):
-                                nutritional_parts.append(f"{json_data[text_index]}:{json_data[value_index]}")
-                    return ",".join(nutritional_parts)
-            return ""
-        except (json.JSONDecodeError, IndexError):
-            return ""
+            return json.loads(htmlContent)
+        except json.JSONDecodeError:
+            logging.error("Failed to decode JSON.")
+            return None
 
-    def extract_ingredients(self, html_content):
-        try:
-            json_data = json.loads(html_content)
-            ingredients_container = json_data[22] if len(json_data) > 22 else None
-            if isinstance(ingredients_container, dict) and "ingredients" in ingredients_container:
-                ingredients_ref_index = ingredients_container["ingredients"]
-                if isinstance(ingredients_ref_index, int) and len(json_data) > ingredients_ref_index and isinstance(json_data[ingredients_ref_index], str):
-                    ingredients_string = re.sub(r"^Ingrediënten:\s*", "", json_data[ingredients_ref_index]).strip()
-                    return ingredients_string.replace("\n", " ")
+    def extractNutritionalValues(self, jsonData):
+        if not jsonData:
             return ""
-        except (json.JSONDecodeError, IndexError):
+        try:
+            productDetails = next((item for item in jsonData if isinstance(item, dict) and item.get("standardPackagingUnit") == 33), None)
+            if productDetails and "nutritionalValues" in productDetails:
+                nutritionalValuesRefIndex = productDetails["nutritionalValues"]
+                if isinstance(nutritionalValuesRefIndex, int) and 0 <= nutritionalValuesRefIndex < len(jsonData) and isinstance(jsonData[nutritionalValuesRefIndex], list):
+                    nutritionalParts = []
+                    for index in jsonData[nutritionalValuesRefIndex]:
+                        if isinstance(index, int) and 0 <= index < len(jsonData) and isinstance(jsonData[index], dict) and "text" in jsonData[index] and "value" in jsonData[index]:
+                            textIndex = jsonData[index]["text"]
+                            valueIndex = jsonData[index]["value"]
+                            if isinstance(textIndex, int) and 0 <= textIndex < len(jsonData) and isinstance(jsonData[textIndex], str) and \
+                               isinstance(valueIndex, (int, float, str)) and 0 <= valueIndex < len(jsonData) and isinstance(jsonData[valueIndex], str):
+                                nutritionalParts.append(f"{jsonData[textIndex]}:{jsonData[valueIndex]}")
+                            elif isinstance(textIndex, int) and 0 <= textIndex < len(jsonData) and isinstance(jsonData[textIndex], str) and \
+                                 isinstance(valueIndex, (int, float, str)):
+                                nutritionalParts.append(f"{jsonData[textIndex]}:{jsonData[valueIndex]}")
+                    return ",".join(nutritionalParts)
+            return ""
+        except (IndexError, TypeError):
+            logging.warning("Error extracting nutritional values.")
             return ""
 
-    def extract_image_url(self, json_ld_snippet):
+    def extractIngredients(self, jsonData):
+        if not jsonData:
+            return ""
         try:
-            data = json.loads(json_ld_snippet)
-            for item in data.get("@graph", []):
+            if len(jsonData) > 22 and isinstance(jsonData[22], dict) and "ingredients" in jsonData[22]:
+                ingredientsRefIndex = jsonData[22]["ingredients"]
+                if isinstance(ingredientsRefIndex, int) and 0 <= ingredientsRefIndex < len(jsonData) and isinstance(jsonData[ingredientsRefIndex], str):
+                    ingredientsString = re.sub(r"^Ingrediënten:\s*", "", jsonData[ingredientsRefIndex]).strip()
+                    return ingredientsString.replace("\n", " ")
+            return ""
+        except (IndexError, TypeError):
+            logging.warning("Error extracting ingredients.")
+            return ""
+
+    def extractImageUrl(self, jsonLdData):
+        if not jsonLdData or not isinstance(jsonLdData, dict) or "@graph" not in jsonLdData:
+            return None
+        try:
+            for item in jsonLdData.get("@graph", []):
                 if item.get("@type") == "ImageObject":
                     return item.get("url")
                 elif item.get("@type") == ["WebPage", "ItemPage"] and "primaryImageOfPage" in item:
-                    primary_image_id = item["primaryImageOfPage"].get("@id")
-                    for graph_item in data.get("@graph", []):
-                        if graph_item.get("@id") == primary_image_id and graph_item.get("@type") == "ImageObject":
-                            return graph_item.get("url")
+                    primaryImageId = item["primaryImageOfPage"].get("@id")
+                    for graphItem in jsonLdData.get("@graph", []):
+                        if graphItem.get("@id") == primaryImageId and graphItem.get("@type") == "ImageObject":
+                            return graphItem.get("url")
             return None
-        except json.JSONDecodeError:
+        except (AttributeError, TypeError):
+            logging.warning("Error extracting image URL from JSON-LD.")
             return None
 
-    def extract_grammage(self, sel):
+    def extractGrammage(self, sel):
         text = sel.css('p.subtitle ::text').get()
         if text:
             match = re.search(r"(\d+(?:[.,]\d+)?)\s*([a-zA-Z]+)", text)
@@ -75,104 +93,112 @@ class Parser:
                 return match.group(1).replace(",", "."), match.group(2).lower()
         return "", ""
 
-    def extract_nutritional(self, sel):
-        nuxt_data_script = sel.xpath("//script[@id='__NUXT_DATA__']/text()").get()
-        return self.extract_nutritional_values(nuxt_data_script.strip()) if nuxt_data_script else ""
+    def extractProductData(self, sel):
+        nuxtDataScript = sel.xpath("//script[@id='__NUXT_DATA__']/text()").get()
+        return self.extractJsonData(nuxtDataScript.strip()) if nuxtDataScript else None
 
-    def extract_ingredients_info(self, sel):
-        nuxt_data_script = sel.xpath("//script[@id='__NUXT_DATA__']/text()").get()
-        return self.extract_ingredients(nuxt_data_script.strip()) if nuxt_data_script else ""
+    def extractJsonLdData(self, sel):
+        jsonLdScript = sel.xpath('//script[@type="application/ld+json"]/text()').get()
+        if jsonLdScript:
+            try:
+                return json.loads(jsonLdScript.strip())
+            except json.JSONDecodeError:
+                logging.error(f"Failed to decode JSON-LD script: {jsonLdScript}")
+                return None
+        return None
 
-    def extract_product_image_url(self, sel):
-        json_ld_script = sel.xpath('//script[@type="application/ld+json"]/text()').get()
-        return self.extract_image_url(json_ld_script.strip()) if json_ld_script else None
+    def parseItem(self, url, response):
+        sel = Selector(text=response.text)
+        jsonLdData = self.extractJsonLdData(sel)
+        nuxtData = self.extractProductData(sel)
 
-    def extract_fields(self, data, file_path, sel):
-        product = next((entry for entry in data.get("@graph", []) if entry.get("@type") == "Product"), {})
-        offer = product.get("offers", {})
-        breadcrumb_data = next((entry for entry in data.get("@graph", []) if entry.get("@type") == "BreadcrumbList"), {})
-        breadcrumb_items = breadcrumb_data.get("itemListElement", [])
-        hierarchy = [item.get("item", {}).get("name", "").strip() for item in breadcrumb_items]
-        breadcrumb = "> ".join(hierarchy)
-        producthierarchy = hierarchy + [""] * (4 - len(hierarchy))
-        manufacturer_info = product.get("manufacturer", {})
-        grammage_quantity, grammage_unit = self.extract_grammage(sel)
-        nutritional_string = self.extract_nutritional(sel)
-        ingredients_string = self.extract_ingredients_info(sel)
-        image_url = self.extract_product_image_url(sel)
-        unique_id = str(product.get("mpn", ""))
-        organictype = "True" if "Organic" in product.get("name", "") or "Bio+" in product.get("brand", {}).get("name", "") else ""
+        item = {}
 
-        return {
-            "unique_id": unique_id,
-            "competitor_name": self.competitor_name,
-            "extraction_date": datetime.now().strftime("%Y-%m-%d"),
-            "product_name": product.get("name", ""),
-            "brand": product.get("brand", {}).get("name", ""),
-            "brand_type": manufacturer_info.get("@type", ""),
-            "grammage_quantity": grammage_quantity,
-            "grammage_unit": grammage_unit,
-            "producthierarchy_level1": producthierarchy[0],
-            "producthierarchy_level2": producthierarchy[1],
-            "producthierarchy_level3": producthierarchy[2],
-            "producthierarchy_level4": producthierarchy[3],
-            "regular_price": str(offer.get("price", offer.get("Price", ""))),
-            "selling_price": str(offer.get("price", offer.get("Price", ""))),
-            "price_was": "",
-            "promotion_price": "",
-            "promotion_valid_from": "",
-            "promotion_valid_upto": "",
-            "promotion_type": "",
-            "percentage_discount": "",
-            "promotion_description": "",
-            "price_per_unit": "",
-            "currency": offer.get("priceCurrency", ""),
-            "beadcrumb": breadcrumb,
-            "pdp_url": product.get("@id", "").split('#')[0],
-            "Fat %": "",
-            "variants": "",
-            "product_description": product.get("description", ""),
-            "instructions": "",
-            "storage_instructions": "",
-            "country_of_origin": self.country,
-            "allergens": "",
-            "nutritional_score": nutritional_string,
-            "organictype": organictype,
-            "file_name_1": image_url if image_url else "",
-            "upc": unique_id,
-            "ingredients": ingredients_string,
-            "servings_per_pack": "",
-        }
+        if jsonLdData and isinstance(jsonLdData, dict) and "@graph" in jsonLdData:
+            product = next((entry for entry in jsonLdData.get("@graph", []) if entry.get("@type") == "Product"), {})
+            offer = product.get("offers", {})
+            breadcrumbData = next((entry for entry in jsonLdData.get("@graph", []) if entry.get("@type") == "BreadcrumbList"), {})
+            breadcrumbItems = breadcrumbData.get("itemListElement", [])
+            hierarchy = [item.get("item", {}).get("name", "").strip() for item in breadcrumbItems]
+            breadcrumb = "> ".join(hierarchy)
+            productHierarchy = hierarchy + [""] * (4 - len(hierarchy))
+            manufacturerInfo = product.get("manufacturer", {})
+            grammageQuantity, grammageUnit = self.extractGrammage(sel)
+            nutritionalString = self.extractNutritionalValues(nuxtData)
+            ingredientsString = self.extractIngredients(nuxtData)
+            imageUrl = self.extractImageUrl(jsonLdData)
+            uniqueId = str(product.get("mpn", ""))
+            organicType = "True" if "Organic" in product.get("name", "") or "Bio+" in product.get("brand", {}).get("name", "") else ""
+
+            item["unique_id"] = uniqueId
+            item["competitor_name"] = "dirk"
+            item["extraction_date"] = datetime.now().strftime("%Y-%m-%d")
+            item["product_name"] = product.get("name", "")
+            item["brand"] = product.get("brand", {}).get("name", "")
+            item["brand_type"] = manufacturerInfo.get("@type", "")
+            item["grammage_quantity"] = grammageQuantity
+            item["grammage_unit"] = grammageUnit
+            item["producthierarchy_level1"] = productHierarchy[0]
+            item["producthierarchy_level2"] = productHierarchy[1]
+            item["producthierarchy_level3"] = productHierarchy[2]
+            item["producthierarchy_level4"] = productHierarchy[3]
+            item["regular_price"] = str(offer.get("price", offer.get("Price", "")))
+            item["selling_price"] = str(offer.get("price", offer.get("Price", "")))
+            item["price_was"] = ""
+            item["promotion_price"] = ""
+            item["promotion_valid_from"] = ""
+            item["promotion_valid_upto"] = ""
+            item["promotion_type"] = ""
+            item["percentage_discount"] = ""
+            item["promotion_description"] = ""
+            item["price_per_unit"] = ""
+            item["currency"] = offer.get("priceCurrency", "")
+            item["beadcrumb"] = breadcrumb
+            item["pdp_url"] = product.get("@id", "").split('#')[0]
+            item["fat_percentage"] = ""
+            item["variants"] = ""
+            item["product_description"] = product.get("description", "")
+            item["instructions"] = ""
+            item["storage_instructions"] = ""
+            item["country_of_origin"] = "nl"
+            item["allergens"] = ""
+            item["nutritional_score"] = nutritionalString
+            item["organictype"] = organicType
+            item["file_name_1"] = imageUrl if imageUrl else ""
+            item["upc"] = uniqueId
+            item["ingredients"] = ingredientsString
+            item["servings_per_pack"] = ""
+
+            try:
+                productItem = ProductItem(**item)
+                productItem.save()
+                logging.info(f"Saved product: {item.get('product_name')} from {url} with UPC: {uniqueId}")
+            except NotUniqueError:
+                logging.warning(f"Duplicate UPC found for product in {url}. Skipping: {uniqueId}")
+            except Exception as e:
+                logging.error(f"An error occurred while saving {url} (UPC: {uniqueId}): {e}")
+        else:
+            logging.warning(f"Could not parse JSON-LD data from {url}.")
 
     def start(self):
-        for file_path in self.file_paths:
-            if os.path.exists(file_path):
-                with open(file_path, "r", encoding="utf-8") as f:
-                    html_text = f.read()
-                    sel = Selector(text=html_text)
-                    json_ld_script = sel.xpath('//script[@type="application/ld+json"]/text()').get()
-                    if json_ld_script:
-                        try:
-                            json_data = json.loads(json_ld_script)
-                            fields = self.extract_fields(json_data, file_path, sel)
-                            product = ProductItem(**fields)
-                            product.save()
-                        except json.JSONDecodeError:
-                            pass
-                        except NotUniqueError:
-                            print(f"Duplicate unique_id found for product in {file_path}. Skipping.")
-                        except Exception as e:
-                            print(f"An error occurred while processing {file_path}: {e}")
-
-    def get_product_list(self):
-        return list(ProductItem.objects.all().as_pymongo())
+        metas = [{'url': filePath} for filePath in self.filePaths]
+        for meta in metas:
+            url = meta.get('url')
+            try:
+                with open(url, 'r', encoding='utf-8') as f:
+                    htmlText = f.read()
+                response = type('Response', (), {'text': htmlText, 'url': url})()
+                self.parseItem(url, response)
+            except FileNotFoundError:
+                logging.error(f"File not found: {url}")
+            except Exception as e:
+                logging.error(f"Error processing {url}: {e}")
 
     def close(self):
         pass
 
-
 if __name__ == "__main__":
-    file_paths = [
+    filePaths = [
         "/home/anoop/training_log/2025-04-17/dirk_html/Arla Organic Buttermilk. Now at Dirk _ Dirk.html",
         "/home/anoop/training_log/2025-04-17/dirk_html/Arla Organic full-fat yoghurt. Now at Dirk _ Dirk.html",
         "/home/anoop/training_log/2025-04-17/dirk_html/Arla Organic semi-skimmed milk _ Dirk.html",
@@ -183,9 +209,8 @@ if __name__ == "__main__":
         "/home/anoop/training_log/2025-04-17/dirk_html/Bio+ Organic rice drink unsweetened plant-based _ Dirk.html",
         "/home/anoop/training_log/2025-04-17/dirk_html/Bio+ Yogurt half-fat. Now at Dirk _ Dirk.html",
         "/home/anoop/training_log/2025-04-17/dirk_html/Offer_ Oatly Oat Drink organic plant-based _ Dirk.html",
-        "/home/anoop/training_log/2025-04-17/dirk_html/s.html",
     ]
-    parser = Parser(file_paths)
+    parser = Parser(filePaths)
     parser.start()
-    print(f"Data saved to MongoDB, database: {MONGO_DB}, collection: parser")
+    logging.info(f"Data processing finished.")
     parser.close()

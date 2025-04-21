@@ -1,10 +1,10 @@
 from mongoengine import DynamicDocument, StringField, FloatField
-
+from settings import MONGO_DB, MONGO_COLLECTION_DATA
 
 class ProductItem(DynamicDocument):
     """Initializing product data fields and their data types."""
 
-    meta = {"db_alias": "default", "collection": "parser"}
+    meta = {"collection": MONGO_COLLECTION_DATA, "db": MONGO_DB}
     unique_id = StringField(required=True, unique=True)
     competitor_name = StringField()
     extraction_date = StringField()
@@ -30,7 +30,7 @@ class ProductItem(DynamicDocument):
     currency = StringField()
     beadcrumb = StringField()
     pdp_url = StringField()
-    fat_percentage = StringField(db_field="Fat %")  # Mapping to the key with a space
+    fat_percentage = StringField(db_field="Fat %")
     variants = StringField()
     product_description = StringField()
     instructions = StringField()
@@ -41,6 +41,3 @@ class ProductItem(DynamicDocument):
     organictype = StringField()
     file_name_1 = StringField()
     upc = StringField()
-    ingredients = StringField()
-    servings_per_pack = StringField()
-    nutritional_info = StringField()

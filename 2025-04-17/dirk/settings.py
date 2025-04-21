@@ -26,7 +26,7 @@ DAY = datetime_obj.strftime("%d")
 # ─── MongoDB ──────────────────────────────────────────────────────────────────
 MONGO_URI = "mongodb://localhost:27017/"
 MONGO_DB = "dirk"
-MONGO_COLLECTION_DATA = "crawler"
+MONGO_COLLECTION_DATA = "parser_updated"
 
 # ─── Headers ──────────────────────────────────────────────────────────────────
 HEADERS = {
@@ -41,7 +41,7 @@ HEADERS = {
     'Sec-Fetch-User': '?1',
     'Priority': 'u=0, i',
 }
-headers = HEADERS  
+headers = HEADERS
 
 # ─── Proxy / Queue  ──────────────────────────────────────────────────
 PROXY = ""
@@ -50,4 +50,4 @@ QUEUE_NAME_URL = f"{PROJECT_NAME}_urls"
 
 
 # ─── Export Configuration ──────────────────────────────────────────────────
-FILE_NAME_FULLDUMP = "dirk_products.csv"  
+FILE_NAME_FULLDUMP = "dirk_products.csv"

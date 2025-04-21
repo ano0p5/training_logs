@@ -54,7 +54,7 @@ class Export:
     def __init__(self, writer):
         connect(db=MONGO_DB)
         self.writer = writer
-        self.competitor_name = 'dirk'  # Set the competitor name
+        self.competitor_name = 'dirk' 
 
     def start(self):
         """Start Function to export data to CSV"""

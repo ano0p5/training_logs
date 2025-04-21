@@ -6,7 +6,7 @@ from pymongo import MongoClient
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-class crawler:
+class Crawler:
     def __init__(self):
         self.client = MongoClient("mongodb://localhost:27017/")
         self.db = self.client["dirk"]
@@ -70,6 +70,6 @@ class crawler:
 
 
 if __name__ == "__main__":
-    parser = crawler()  
+    parser = Crawler()  
     parser.start()
     parser.close()
