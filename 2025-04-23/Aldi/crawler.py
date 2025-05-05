@@ -49,7 +49,7 @@ class Crawler:
         if len(parts) > 1:
             category_part = parts[-1].replace(".html", "").replace("-", " ")
             return settings.CATEGORY_MAPPING.get(category_part, category_part.replace(" ", "-"))
-        return None
+        return ""
 
     def parse_algolia_response(self, algolia_data):
         extracted_products = []
@@ -68,43 +68,43 @@ class Crawler:
         product["extraction_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         product["product_name"] = hit.get("variantName")
         product["brand"] = hit.get("brandName")
-        product["brand_type"] = None
-        product["grammage_quantity"] = hit.get("salesUnit", "").split(" ")[0] if hit.get("salesUnit") else None
-        product["grammage_unit"] = hit.get("salesUnit", "").split(" ")[1] if hit.get("salesUnit", "").split() else None
+        product["brand_type"] = ""
+        product["grammage_quantity"] = hit.get("salesUnit", "").split(" ")[0] if hit.get("salesUnit") else ""
+        product["grammage_unit"] = hit.get("salesUnit", "").split(" ")[1] if hit.get("salesUnit", "").split() else ""
 
         categories = ["ALDI Supermarkten"] + hit.get("categories", [])
         product["beadcrumb"] = " > ".join(categories)
-        product["producthierarchy_level1"] = categories[0] if len(categories) > 0 else None
-        product["producthierarchy_level2"] = categories[1] if len(categories) > 1 else None
-        product["producthierarchy_level3"] = categories[2] if len(categories) > 2 else None
-        product["producthierarchy_level4"] = categories[3] if len(categories) > 3 else None
-        product["producthierarchy_level5"] = categories[4] if len(categories) > 4 else None
+        product["producthierarchy_level1"] = categories[0] if len(categories) > 0 else ""
+        product["producthierarchy_level2"] = categories[1] if len(categories) > 1 else ""
+        product["producthierarchy_level3"] = categories[2] if len(categories) > 2 else ""
+        product["producthierarchy_level4"] = categories[3] if len(categories) > 3 else ""
+        product["producthierarchy_level5"] = categories[4] if len(categories) > 4 else ""
 
         product["regular_price"] = hit.get("currentPrice", {}).get("strikePriceValue")
         product["selling_price"] = hit.get("currentPrice", {}).get("priceValue")
         product["price_was"] = hit.get("currentPrice", {}).get("strikePriceValue")
-        product["promotion_price"] = None
-        product["promotion_valid_from"] = None
-        product["promotion_valid_upto"] = None
-        product["promotion_type"] = None
-        product["percentage_discount"] = None
-        product["promotion_description"] = hit.get("promotion", {}).get("text") if hit.get("promotion") else None
+        product["promotion_price"] = ""
+        product["promotion_valid_from"] = ""
+        product["promotion_valid_upto"] = ""
+        product["promotion_type"] = ""
+        product["percentage_discount"] = ""
+        product["promotion_description"] = hit.get("promotion", {}).get("text") if hit.get("promotion") else ""
         product["price_per_unit"] = hit.get("currentPrice", {}).get("basePriceValue")
         product["currency"] = "EUR"
-        product["pdp_url"] = f"{settings.ALDI_PRODUCT_URL_BASE}{hit.get('productSlug')}-{hit.get('objectID')}{settings.ALDI_PRODUCT_URL_SUFFIX}" if hit.get("productSlug") and hit.get("objectID") else None
-        product["Fat %"] = None
-        product["variants"] = None
+        product["pdp_url"] = f"{settings.ALDI_PRODUCT_URL_BASE}{hit.get('productSlug')}-{hit.get('objectID')}{settings.ALDI_PRODUCT_URL_SUFFIX}" if hit.get("productSlug") and hit.get("objectID") else ""
+        product["Fat %"] = ""
+        product["variants"] = ""
         product["product_description"] = hit.get("longDescription") or hit.get("shortDescription")
-        product["instructions"] = None
-        product["storage_instructions"] = None
-        product["country_of_origin"] = None
-        product["allergens"] = None
-        product["nutritional_score"] = None
-        product["organictype"] = None
-        product["file_name_1"] = hit.get("images", [{}])[0].get("url") if hit.get("images") else None
-        product["upc"] = None
-        product["ingredients"] = None
-        product["servings_per_pack"] = None
+        product["instructions"] = ""
+        product["storage_instructions"] = ""
+        product["country_of_origin"] = ""
+        product["allergens"] = ""
+        product["nutritional_score"] = ""
+        product["organictype"] = ""
+        product["file_name_1"] = hit.get("images", [{}])[0].get("url") if hit.get("images") else ""
+        product["upc"] = ""
+        product["ingredients"] = ""
+        product["servings_per_pack"] = ""
 
         return product
 
