@@ -1,11 +1,7 @@
-import logging
+from settings import logging
 import settings
 import requests as request
-from datetime import datetime
 from pymongo import MongoClient
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
 
 class Crawler:
     def __init__(self):
@@ -31,7 +27,8 @@ class Crawler:
                     algolia_data = response.json()
                     extracted_products = self.parse_algolia_response(algolia_data)
                     if extracted_products:
-                        self.save_to_db(extracted_products)
+                        collection = self.db[self.collection_name]
+                        collection.insert_many(extracted_products)
                         category_name = url.split('/')[-1].replace(".html", "").replace("-", " ").title()
                         logging.info(f"Saved {len(extracted_products)} products for category: {category_name} to MongoDB.")
                     else:
@@ -67,11 +64,6 @@ class Crawler:
             "pdp_url": f"{settings.ALDI_PRODUCT_URL_BASE}{hit.get('productSlug', '')}-{hit.get('objectID', '')}{settings.ALDI_PRODUCT_URL_SUFFIX}",
             "image_url": hit.get("images", [{}])[0].get("url", "") if hit.get("images") else ""
         }
-
-    def save_to_db(self, products):
-        if products:
-            collection = self.db[self.collection_name]
-            collection.insert_many(products)
 
     def close(self):
         if self.client:

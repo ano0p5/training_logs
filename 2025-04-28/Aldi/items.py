@@ -5,6 +5,7 @@ class ProductItem(DynamicDocument):
     """Initializing product data fields and their data types."""
 
     meta = {"collection": MONGO_COLLECTION_DATA, "db": MONGO_DB}
+    
     unique_id = StringField(required=True, unique=True)
     competitor_name = StringField()
     extraction_date = StringField()
@@ -28,7 +29,7 @@ class ProductItem(DynamicDocument):
     promotion_description = StringField()
     price_per_unit = StringField()
     currency = StringField()
-    beadcrumb = StringField()
+    breadcrumb = StringField()  
     pdp_url = StringField()
     fat_percentage = StringField(db_field="Fat %")
     variants = StringField()
