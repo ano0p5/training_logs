@@ -1,8 +1,8 @@
 import csv
-from datetime import datetime
-from mongoengine import connect
 from settings import FILE_NAME_FULLDUMP, MONGO_DB
-from items import ProductItem
+from mongoengine import connect
+from items import ProductItem 
+
 
 csv_headers = [
     "unique_id",
@@ -10,14 +10,13 @@ csv_headers = [
     "extraction_date",
     "product_name",
     "brand",
+    "brand_type",
     "grammage_quantity",
     "grammage_unit",
-    "breadcrumb",
     "producthierarchy_level1",
     "producthierarchy_level2",
     "producthierarchy_level3",
     "producthierarchy_level4",
-    "producthierarchy_level5",
     "regular_price",
     "selling_price",
     "price_was",
@@ -29,6 +28,7 @@ csv_headers = [
     "promotion_description",
     "price_per_unit",
     "currency",
+    "breadcrumb",  
     "pdp_url",
     "Fat %",
     "variants",
@@ -39,69 +39,79 @@ csv_headers = [
     "allergens",
     "nutritional_score",
     "organictype",
+    "file_name_1",
     "upc",
     "ingredients",
     "servings_per_pack",
-    "img_urls"
 ]
 
+def get_safe_value(item, attr):
+    val = getattr(item, attr, '')
+    if val is None:
+        return ''
+    # Convert string "None" (case insensitive) to empty string
+    if isinstance(val, str) and val.strip().lower() == "none":
+        return ''
+    return val
+
 class Export:
+
     def __init__(self, writer):
         connect(db=MONGO_DB)
         self.writer = writer
+        self.competitor_name = 'aldi' 
 
     def start(self):
+        """Start Function to export data to CSV"""
         self.writer.writerow(csv_headers)
 
-        for item in ProductItem.objects:
-            row = [
-                getattr(item, "unique_id", ""),
-                getattr(item, "competitor_name", "aldi"),
-                getattr(item, "extraction_date", datetime.now().strftime('%Y-%m-%d')),
-                getattr(item, "product_name", ""),
-                getattr(item, "brand", ""),
-                getattr(item, "grammage_quantity", ""),
-                getattr(item, "grammage_unit", ""),
-                getattr(item, "breadcrumb", ""),
-                getattr(item, "producthierarchy_level1", ""),
-                getattr(item, "producthierarchy_level2", ""),
-                getattr(item, "producthierarchy_level3", ""),
-                getattr(item, "producthierarchy_level4", ""),
-                getattr(item, "producthierarchy_level5", ""),
-                getattr(item, "regular_price", ""),
-                getattr(item, "selling_price", ""),
-                getattr(item, "price_was", ""),
-                getattr(item, "promotion_price", ""),
-                getattr(item, "promotion_valid_from", ""),
-                getattr(item, "promotion_valid_upto", ""),
-                getattr(item, "promotion_type", ""),
-                getattr(item, "percentage_discount", ""),
-                getattr(item, "promotion_description", ""),
-                getattr(item, "price_per_unit", ""),
-                getattr(item, "currency", "EUR"),
-                getattr(item, "pdp_url", ""),
-                getattr(item, "fat_percentage", ""), 
-                self.stringify(getattr(item, "variants", "")),
-                getattr(item, "product_description", ""),
-                getattr(item, "instructions", ""),
-                getattr(item, "storage_instructions", ""),
-                getattr(item, "country_of_origin", "nl"),
-                getattr(item, "allergens", ""),
-                getattr(item, "nutritional_score", ""),
-                getattr(item, "organictype", ""),
-                getattr(item, "upc", ""),
-                getattr(item, "ingredients", ""),
-                getattr(item, "servings_per_pack", ""),
-                self.stringify(getattr(item, "img_urls", ""))
+        for item in ProductItem.objects.all():
+            data = [
+                get_safe_value(item, "unique_id"),
+                self.competitor_name,
+                get_safe_value(item, "extraction_date"),
+                get_safe_value(item, "product_name"),
+                get_safe_value(item, "brand"),
+                get_safe_value(item, "brand_type"),
+                get_safe_value(item, "grammage_quantity"),
+                get_safe_value(item, "grammage_unit"),
+                get_safe_value(item, "producthierarchy_level1"),
+                get_safe_value(item, "producthierarchy_level2"),
+                get_safe_value(item, "producthierarchy_level3"),
+                get_safe_value(item, "producthierarchy_level4"),
+                get_safe_value(item, "regular_price"),
+                get_safe_value(item, "selling_price"),
+                get_safe_value(item, "price_was"),
+                get_safe_value(item, "promotion_price"),
+                get_safe_value(item, "promotion_valid_from"),
+                get_safe_value(item, "promotion_valid_upto"),
+                get_safe_value(item, "promotion_type"),
+                get_safe_value(item, "percentage_discount"),
+                get_safe_value(item, "promotion_description"),
+                get_safe_value(item, "price_per_unit"),
+                get_safe_value(item, "currency"),
+                get_safe_value(item, "breadcrumb"),
+                get_safe_value(item, "pdp_url"),
+                get_safe_value(item, "fat_percentage"),  
+                get_safe_value(item, "variants"),
+                get_safe_value(item, "product_description"),
+                get_safe_value(item, "instructions"),
+                get_safe_value(item, "storage_instructions"),
+                get_safe_value(item, "country_of_origin"),
+                get_safe_value(item, "allergens"),
+                get_safe_value(item, "nutritional_score"),
+                get_safe_value(item, "organictype"),
+                get_safe_value(item, "file_name_1"),
+                get_safe_value(item, "upc"),
+                get_safe_value(item, "ingredients"),
+                get_safe_value(item, "servings_per_pack"),
             ]
-            self.writer.writerow([str(x).strip() for x in row])
 
-    def stringify(self, value):
-        if isinstance(value, (list, dict)):
-            return str(value)
-        return value or ""
+            self.writer.writerow([str(d) for d in data])
+
 
 if __name__ == "__main__":
-    with open(FILE_NAME_FULLDUMP, "w", encoding="utf-8", newline="") as f:
-        writer = csv.writer(f, delimiter="|", quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        Export(writer).start()
+    with open(FILE_NAME_FULLDUMP, "w", encoding="utf-8", newline='') as file:
+        writer_file = csv.writer(file, delimiter="|", quotechar='"')
+        export = Export(writer_file)
+        export.start()

@@ -1,17 +1,26 @@
 import logging
+from pymongo import MongoClient
 
 # Logging Configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# MongoDB Configuration
-MONGO_DB = "aldi"
-MONGO_COLLECTION_DATA = "aldi_parser1"  # Target for parsed product data
+# MongoDB Config
+MONGO_URI = "mongodb://localhost:27017/"
+MONGO_DB = "aldi_test"
+CRAWLER_COLLECTION = "aldi_crawler"
+PARSER_COLLECTION = "aldi_parser"
 
-# Algolia API Configuration
-ALGOLIA_APP_ID = "2HU29PF6BH"
-ALGOLIA_API_KEY = "686cf0c8ddcf740223d420d1115c94c1"
-ALGOLIA_INDEX_NAME = "an_prd_nl_nl_products"
-ALGOLIA_QUERY_URL = f"https://{ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/*/queries"
+# MongoDB Client and DB
+client = MongoClient(MONGO_URI)
+db = client[MONGO_DB]
+
+# Collections
+crawler_collection = db[CRAWLER_COLLECTION]
+parser_collection = db[PARSER_COLLECTION]
+
+# Ensure Index
+parser_collection.create_index("unique_id", unique=True)
+
 
 # Request Headers
 headers = {
@@ -21,13 +30,6 @@ headers = {
     ),
     "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
     "referer": "https://www.aldi.nl/"
-}
-
-# Algolia Headers for Product Query
-ALGOLIA_HEADERS = {
-    "Content-Type": "application/json",
-    "x-algolia-api-key": ALGOLIA_API_KEY,
-    "x-algolia-application-id": ALGOLIA_APP_ID,
 }
 
 # Base URL Constants
@@ -41,6 +43,8 @@ CATEGORY_MAPPING = {
     "frisdrank": "frisdrank",
     "chips noten": "chips"
 }
+
+MONGO_COLLECTION_DATA = "aldi_parser"
 
 # Optional CSV export file name
 FILE_NAME_FULLDUMP = "aldi_products_export.csv"

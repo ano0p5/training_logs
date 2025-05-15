@@ -2,8 +2,7 @@ from mongoengine import DynamicDocument, StringField, FloatField
 from settings import MONGO_DB, MONGO_COLLECTION_DATA
 
 class ProductItem(DynamicDocument):
-    """Initializing product data fields and their data types."""
-
+    
     meta = {"collection": MONGO_COLLECTION_DATA, "db": MONGO_DB}
     
     unique_id = StringField(required=True, unique=True)

@@ -4,24 +4,18 @@ from datetime import datetime
 from pymongo import MongoClient, errors
 from parsel import Selector
 import requests
-
-from settings import (
-    MONGO_DB,
-    MONGO_COLLECTION_DATA,
-    headers as HEADERS
-)
+from settings import crawler_collection,parser_collection,headers
 
 class AldiProductParser:
     def __init__(self):
         self.client = MongoClient('mongodb://localhost:27017/')
-        self.db = self.client[MONGO_DB]
-        self.source_collection = self.db['aldi_crawler']
-        self.target_collection = self.db[MONGO_COLLECTION_DATA]
+        self.source_collection = crawler_collection
+        self.target_collection = parser_collection
         self.target_collection.create_index("unique_id", unique=True)
 
     def fetch_html(self, url: str) -> str:
         try:
-            response = requests.get(url, headers=HEADERS)
+            response = requests.get(url, headers)
             response.raise_for_status()
             return response.text
         except requests.exceptions.RequestException as e:
@@ -45,32 +39,31 @@ class AldiProductParser:
         crumbs = [c.strip() for c in crumbs]
         breadcrumb = ' > '.join(crumbs)
 
-        item = {
-            'unique_id': '',
-            'competitor_name': 'aldi',
-            'extraction_date': now_str,
-            'product_name': product_name,
-            'brand': brand,
-            'grammage_quantity': grammage_quantity,
-            'grammage_unit': grammage_unit,
-            'breadcrumb': breadcrumb,
-            'regular_price': '',
-            'selling_price': '',
-            'price_was': '',
-            'promotion_price': '',
-            'promotion_valid_from': '',
-            'promotion_valid_upto': '',
-            'promotion_type': '',
-            'percentage_discount': '',
-            'promotion_description': '',
-            'price_per_unit': '',
-            'currency': 'EUR',
-            'pdp_url': url,
-            'product_description': '',
-            'country_of_origin': 'nl',
-            'upc': '',
-            'img_urls': '',
-        }
+        item = {}
+        item['unique_id'] = ''
+        item['competitor_name'] = 'aldi'
+        item['extraction_date'] = now_str
+        item['product_name'] = product_name
+        item['brand'] = brand
+        item['grammage_quantity'] = grammage_quantity
+        item['grammage_unit'] = grammage_unit
+        item['breadcrumb'] = breadcrumb
+        item['regular_price'] = ''
+        item['selling_price'] = ''
+        item['price_was'] = ''
+        item['promotion_price'] = ''
+        item['promotion_valid_from'] = ''
+        item['promotion_valid_upto'] = ''
+        item['promotion_type'] = ''
+        item['percentage_discount'] = ''
+        item['promotion_description'] = ''
+        item['price_per_unit'] = ''
+        item['currency'] = 'EUR'
+        item['pdp_url'] = url
+        item['product_description'] = ''
+        item['country_of_origin'] = 'nl'
+        item['upc'] = ''
+        item['img_urls'] = ''
 
         product_heirarchy_levels = 5
         for i in range(1, product_heirarchy_levels + 1):
