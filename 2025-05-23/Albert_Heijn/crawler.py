@@ -1,8 +1,5 @@
-import logging
 from curl_cffi import requests
-from pymongo import MongoClient
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+from settings import collection ,logging
 
 headers = {
     "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
@@ -13,12 +10,7 @@ class AHCrawler:
     def __init__(self):
         self.base_url = "https://www.ah.nl"
         self.size = 36
-
-        self.client = MongoClient("mongodb://localhost:27017/")
-        self.db = self.client["ah_db"]
-        self.collection = self.db["ah_crawler"]
-        self.collection.create_index("unique_id", unique=True)
-
+        self.collection = collection
 
     def start(self):
         categories = [("chips", "997"), ("frisdrank", "1083")]
