@@ -41,7 +41,8 @@ class AHCrawler:
                 item["pdp_url"] = self.base_url + product.get("link", "")
                 logging.info(item)
                 try:
-                   self.collection.insert_one(item)
+                    if not collection.find_one({"unique_id": item["unique_id"]}):
+                        collection.insert_one(item)
                 except:
                     pass
 
