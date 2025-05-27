@@ -1,4 +1,3 @@
-from datetime import datetime
 from mongoengine import connect
 from items import ProductItem
 from settings import MONGO_DB,MONGO_URI
