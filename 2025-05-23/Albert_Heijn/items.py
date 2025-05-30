@@ -1,4 +1,4 @@
-from mongoengine import DynamicDocument, StringField, FloatField
+from mongoengine import DynamicDocument, StringField
 from settings import MONGO_DB, Parser_Collection
 
 class ProductItem(DynamicDocument):
@@ -11,7 +11,7 @@ class ProductItem(DynamicDocument):
     product_name = StringField()
     brand = StringField()
     brand_type = StringField()
-    grammage_quantity = FloatField()
+    grammage_quantity = StringField()
     grammage_unit = StringField()
     producthierarchy_level1 = StringField()
     producthierarchy_level2 = StringField()

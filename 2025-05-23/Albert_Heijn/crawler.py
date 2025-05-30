@@ -1,16 +1,10 @@
 from curl_cffi import requests
-from settings import collection ,logging
+from settings import collection, logging, headers,BASE_URL
 
-headers = {
-    "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
-    "referer": "https://www.ah.nl"
-}
 
 class AHCrawler:
     def __init__(self):
-        self.base_url = "https://www.ah.nl"
-        self.size = 36
-        self.collection = collection
+        collection.create_index("unique_id", unique=True)  
 
     def start(self):
         categories = [("chips", "997"), ("frisdrank", "1083")]
@@ -19,36 +13,37 @@ class AHCrawler:
             page = 1
             while True:
                 logging.info(f"Fetching page {page} for category {slug}")
-                url = f"https://www.ah.nl/zoeken/api/products/search?page={page}&size={self.size}&taxonomySlug={slug}&taxonomy={tax}"
-                headers["referer"] = f"{self.base_url}/zoeken/{slug}"
+                url = f"https://www.ah.nl/zoeken/api/products/search?page={page}&size=36&taxonomySlug={slug}&taxonomy={tax}"
+                
+                headers["referer"] = f"{BASE_URL}/zoeken/{slug}"
+                
                 response = requests.get(url, headers=headers)
-                if response.status_code != 200 or not self.parse_items(response.json()):
-                    logging.info(f"Stopping pagination at page {page} for category {slug}")
+                if response.status_code != 200:
+                    logging.warning(f"Failed to fetch URL: {url}, Status: {response.status_code}")
                     break
-                page += 1
+                data = response.json()
+                cards = data.get("cards", [])
+                if not cards:
+                    logging.info(f"No more cards found, stopping pagination at page {page} for category {slug}")
+                    break
 
+                self.parse_items(data)
+                page += 1
 
     def parse_items(self, data):
         cards = data.get("cards", [])
-        items = []
-
         for card in cards:
-            products = card.get("products", [])
-            for product in products:
-                item = {}
-                item["unique_id"] = str(product.get("id", ""))
-                item["product_name"] = product.get("title", "")
-                item["pdp_url"] = self.base_url + product.get("link", "")
-                logging.info(item)
-                try:
-                    if not collection.find_one({"unique_id": item["unique_id"]}):
-                        collection.insert_one(item)
-                except:
-                    pass
+            for product in card.get("products", []):
+                item = {
+                    "unique_id": str(product.get("id", "")),
+                    "product_name": product.get("title", ""),
+                    "pdp_url": BASE_URL + product.get("link", "")
+                }
 
-                items.append(item)  
+                logging.info(f"Parsed item: {item}")
 
-        return items if items else None
+                collection.insert_one(item)  
+
 
 if __name__ == "__main__":
     crawler = AHCrawler()
