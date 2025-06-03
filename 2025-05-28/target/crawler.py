@@ -1,6 +1,5 @@
 from settings import logger, HEADERS, crawler_collection
 import requests
-from pymongo.errors import DuplicateKeyError
 import html
 
 class TargetCrawler:
@@ -50,39 +49,26 @@ class TargetCrawler:
             offset += 24
 
     def crawl(self, response):
-        try:
-            data = response.json()
-            products = data.get("data", {}).get("search", {}).get("products", [])
-        except Exception:
-            logger.exception("Failed to parse product JSON")
-            return False
+        data = response.json()
+        products = data.get("data", {}).get("search", {}).get("products", [])
 
         if not products:
             logger.info("No more products found.")
-            return False
+            return
 
         for product in products:
             item = product.get("item", {})
             enrichment = item.get("enrichment", {})
-            buy_url = enrichment.get("buy_url", "")
-            tcin = product.get("tcin", "")
-
-            product_data = {
-                "unique_id": tcin,  
-                "buy_url": buy_url,
+            items = {
+                "unique_id": product.get("tcin", ""),
+                "buy_url": enrichment.get("buy_url", ""),
                 "title": html.unescape(item.get("product_description", {}).get("title", ""))
             }
 
-            logger.info(product_data)
+            logger.info(items)
 
-            try:
-                crawler_collection.insert_one(product_data)
-            except DuplicateKeyError:
-                logger.warning(f"Duplicate entry found for unique_id: {product_data['unique_id']}")
-            except Exception:
-                logger.exception(f"Failed to insert product with tcin {tcin}")
+            crawler_collection.insert_one(items)
 
-        return True
 
 
 if __name__ == "__main__":

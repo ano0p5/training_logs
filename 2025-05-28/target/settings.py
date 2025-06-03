@@ -7,10 +7,12 @@ MONGO_DB = "target_db"
 
 client = MongoClient(MONGO_URI)
 db = client[MONGO_DB]
+parser_collection = "parser"
 
 category_collection = db["category_collection"]
 sub_category_collection = db["sub_category_collection"]
 crawler_collection = db["crawler_final"] 
+
 
 
 # Logging setup
@@ -25,3 +27,4 @@ HEADERS = {
     "Accept": "application/json"
 }
 
+FILE_NAME_FULLDUMP = "Target_products.csv"
