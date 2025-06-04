@@ -20,13 +20,11 @@ class ProductItem(DynamicDocument):
     promotion_description = StringField()
     currency = StringField()
     breadcrumb = StringField()
-
     producthierarchy_level1 = StringField()
     producthierarchy_level2 = StringField()
     producthierarchy_level3 = StringField()
     producthierarchy_level4 = StringField()
     producthierarchy_level5 = StringField()
-
     pdp_url = StringField()
     variants = StringField()
     product_description = StringField()
@@ -41,8 +39,6 @@ class ProductItem(DynamicDocument):
     Gender = StringField()
     clothing_type = StringField()
     variant_color = StringField()
-
-    # Additional fields extracted dynamically from bullet descriptions
     material = StringField()
     material_composition = StringField()
     Clothing_Length = StringField()
@@ -54,9 +50,6 @@ class ProductItem(DynamicDocument):
     clothing_weight = StringField()
     stretch = StringField()
     care_instructions = StringField()
-
-    # Dynamically added image URLs (you can store them as Strings)
     image_url_1 = StringField()
     image_url_2 = StringField()
     image_url_3 = StringField()
-    # Add more if needed...
