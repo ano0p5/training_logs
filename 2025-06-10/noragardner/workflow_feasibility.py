@@ -1,23 +1,34 @@
-#Category urls
-
-
 import requests
 from parsel import Selector
 
-url = "https://noragardner.com/"
+start_url = "https://noragardner.com/collections/dresses"
 
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+}
 
-response = requests.get(url)
-selector = Selector(response.text)
+response = requests.get(start_url, headers=headers)
+sel = Selector(response.text)
 
-category_urls = selector.xpath("//div[contains(@class, 'megamenu')]//a[contains(@class, 'site-nav__dropdown-link') and not(contains(@class, 'site-nav__dropdown-link--top-level'))]/@href").getall()
+product_elements = sel.xpath('//a[contains(@class, "grid-product__link")]')
 
-for url in category_urls:
-    print(f"https://noragardner.com{url}")
-    
-#Product crawler
+for product in product_elements:
+    product_url = product.xpath('./@href').get(default='')
+    full_url = f"https://noragardner.com{product_url}" if product_url else ''
 
-"product_name": selector.xpath('//div[@data-product-handle]/@data-product-handle').get(),
-"product_id": selector.xpath('//div[@data-product-id]/@data-product-id').get(),
-"product_url": selector.xpath('//a[@class="grid-product__link"]/@href').get(),
-"product_price": selector.xpath('//div[@class="grid-product__price"]/text()').get(),
+    product_name = product.xpath('.//div[contains(@class, "grid-product__title")]/text()').get(default='').strip()
+    price = product.xpath('.//div[contains(@class, "grid-product__price")]/text()').get(default='').strip()
+
+    # Primary image
+    image_url_1 = product.xpath('.//div[@class="image-wrap"]/img/@data-src').get(default='').strip()
+
+    # Secondary image
+    image_url_2 = product.xpath('.//div[contains(@class,"grid-product__secondary-image")]/img/@data-srcset').get(default='').split()[0].strip() if product.xpath('.//div[contains(@class,"grid-product__secondary-image")]/img/@data-srcset') else ''
+
+    print({
+        "product_name": product_name,
+        "price": price,
+        "product_url": full_url,
+        "image_url_1": image_url_1,
+        "image_url_2": image_url_2
+    })
