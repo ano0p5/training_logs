@@ -47,15 +47,16 @@ class Crawler:
         for p in products:
             try:
                 item = {
-                    'name': p['product'].get('title', '').strip(),
-                    'price': str(int(float(p.get('price', {}).get('amount', 0)))),
+                    'product_name': p['product'].get('title', '').strip(),
+                    'sale_price': str(int(float(p.get('price', {}).get('amount', 0)))),
+                    'orginal_price': str(int(float(p.get('price', {}).get('amount', 0)))),                    
                     'currency': "USD",
                     'product_url': BASE_URL + p['product'].get('url', ''),
-                    'image': p.get('image', {}).get('src', ''),
-                    'sku': p.get('sku', ''),
+                    'sku': "",
+                    'brand': "",
                     'category': category
                 }
-                db["products"].insert_one(item)
+                db["products_pp"].insert_one(item)
                 logging.info(item)
             except Exception:
                 pass
