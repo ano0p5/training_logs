@@ -1,9 +1,9 @@
 # settings.py
 
 MONGO_URI = "mongodb://localhost:27017/"
-DB_NAME = "walgreens_db"
+DB_NAME = "walgreen_db"
 COLLECTION_NAME = "product_ids"
-PARSER_COLLECTION_NAME = "parser_collection"
+PARSER_COLLECTION_NAME = "parser"
 
 
 HEADERS = {

@@ -2,10 +2,11 @@ import logging
 import re
 from curl_cffi import requests
 from pymongo import MongoClient
-
 from settings import MONGO_URI, DB_NAME, COLLECTION_NAME, HEADERS, PARSER_COLLECTION_NAME
 
+# Logging configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 class WalgreensProductParser:
     def __init__(self):
@@ -21,16 +22,15 @@ class WalgreensProductParser:
                 return section.get(key, {})
         return {}
 
-    def parse(self, product_id, zipcode=""):
+    def parse(self, product_id):
         url = f"https://www.walgreens.com/productapi/v1/products?productId={product_id}"
         try:
             response = requests.get(url, headers=self.headers, impersonate="chrome")
             if response.status_code != 200:
                 logging.error(f"Product ID {product_id} failed with status {response.status_code}")
-                return  
+                return
 
             data = response.json()
-
             product_info = data.get("productInfo", {}) or {}
             price_info = data.get("priceInfo", {}) or {}
             prod_details = data.get("prodDetails", {}) or {}
@@ -80,9 +80,9 @@ class WalgreensProductParser:
                 "grammage": product_info.get("sizeCount", ""),
                 "upc": inventory.get("upc", ""),
                 "ingredients": "",
+                "Zipcode":"",
                 "warning": warning,
                 "country_of_origin": country_of_origin,
-                "zipcode": zipcode,
                 "other_data": {
                     "fsa_eligible": str(product_info.get("isFsa", "")),
                     "review_rating": review_rating,
@@ -90,33 +90,21 @@ class WalgreensProductParser:
                 }
             }
 
-            # Insert item into parsed_collection
-            self.parsed_collection.insert_one(
-                {"retailer_id": item["retailer_id"]},
-                {"$set": item},
-                upsert=True
-            )
-
-            yield item
+            self.parsed_collection.insert_one(item)
+            logging.info(f"Parsed Product ID: {product_id}")
+            logging.info(item)
 
         except Exception as e:
             logging.error(f"Error fetching Product ID {product_id}: {e}")
-            return
 
-    def start(self, zipcode=""):
+    def start(self):
         prod_ids_doc = self.collection.find_one()
         prod_ids = prod_ids_doc.get("prod_ids", []) if prod_ids_doc else []
 
         for product_id in prod_ids:
-            parsed_generator = self.parse(product_id, zipcode)
-            if parsed_generator:
-                for parsed_item in parsed_generator:
-                    logging.info(f"Parsed Product ID: {product_id}")
-                    logging.info(parsed_item)
-                    yield parsed_item
+            self.parse(product_id)
 
 
 if __name__ == "__main__":
     parser = WalgreensProductParser()
-    for item in parser.start():
-        pass 
+    parser.start()
