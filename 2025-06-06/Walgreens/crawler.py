@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # MongoDB setup
 client = MongoClient("mongodb://localhost:27017/")
 db = client['walgreens_db']
-collection = db['prod_urls']
+collection = db['product_ids']
 
 # Create unique index 
 collection.create_index(

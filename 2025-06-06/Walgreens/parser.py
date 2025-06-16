@@ -24,6 +24,7 @@ class WalgreensProductParser:
 
     def parse(self, product_id):
         url = f"https://www.walgreens.com/productapi/v1/products?productId={product_id}"
+        print(url)
         try:
             response = requests.get(url, headers=self.headers, impersonate="chrome")
             if response.status_code != 200:
@@ -35,7 +36,7 @@ class WalgreensProductParser:
             price_info = data.get("priceInfo", {}) or {}
             prod_details = data.get("prodDetails", {}) or {}
             inventory = data.get("inventory", {}) or {}
-            sections = prod_details.get("section", []) or []
+            sections = prod_details.get("section") or []
 
             tier1 = product_info.get("tier1Category", "")
             tier2 = product_info.get("tier2Category", "")
@@ -55,7 +56,7 @@ class WalgreensProductParser:
             product_description = re.sub(r'\s+', ' ', product_description).strip()
 
             warning_section = self.extract_section(sections, "warnings")
-            raw_warning = warning_section.get("productWarning", "")
+            raw_warning = warning_section.get("productWarning", "")          
             warning = re.sub(r'<[^>]+>', ' ', raw_warning)
             warning = re.sub(r'&[a-zA-Z0-9#]+;', ' ', warning)
             warning = re.sub(r'\s+', ' ', warning).strip()
@@ -89,6 +90,7 @@ class WalgreensProductParser:
                     "review_count": review_count,
                 }
             }
+        
 
             self.parsed_collection.insert_one(item)
             logging.info(f"Parsed Product ID: {product_id}")
@@ -98,11 +100,14 @@ class WalgreensProductParser:
             logging.error(f"Error fetching Product ID {product_id}: {e}")
 
     def start(self):
-        prod_ids_doc = self.collection.find_one()
-        prod_ids = prod_ids_doc.get("prod_ids", []) if prod_ids_doc else []
-
-        for product_id in prod_ids:
-            self.parse(product_id)
+        prod_ids_doc = self.collection.find()
+      
+        
+        for product_id in prod_ids_doc:
+            prod_ids = product_id.get("extracted_prod_id", []) if prod_ids_doc else []
+            print(prod_ids)
+            
+            self.parse(prod_ids)
 
 
 if __name__ == "__main__":
