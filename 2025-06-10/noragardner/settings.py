@@ -5,7 +5,7 @@ MONGO_URI = "mongodb://localhost:27017/"
 MONGO_DB = "noragardner"
 MONGO_COLLECTION = "products"
 MONGO_CATEGORY_COLLECTION = "category_urls"
-MONGO_COLLECTION_REVIEWS = "PARSER"
+MONGO_COLLECTION_REVIEWS = "Parser_updated"
 CSV_FILE = "nora_gardner_export.csv"
 
 # Request Headers

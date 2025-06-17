@@ -1,8 +1,6 @@
 import csv
 from pymongo import MongoClient
-from settings import MONGO_COLLECTION_REVIEWS,CSV_FILE,MONGO_DB,MONGO_URI
-
-
+from settings import MONGO_COLLECTION_REVIEWS, CSV_FILE, MONGO_DB, MONGO_URI
 
 # === Fields 
 FIELDS = [
@@ -36,7 +34,10 @@ def export_to_csv():
         writer = csv.writer(f, delimiter="|", quotechar='"')
         writer.writerow(FIELDS)
 
-        for doc in collection.find({}, {field: 1 for field in FIELDS}):
+        # Export only documents where review_text is non-empty
+        query = {"review_text": {"$ne": ""}}
+
+        for doc in collection.find(query, {field: 1 for field in FIELDS}):
             row = [doc.get(field, "") for field in FIELDS]
             writer.writerow(row)
 
