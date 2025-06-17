@@ -4,7 +4,7 @@ from pymongo import MongoClient
 # MongoDB setup
 mongo_client = MongoClient("mongodb://localhost:27017/")
 db = mongo_client["mmlafleur"]  # Replace with your DB name
-collection = db["products_pdp"]  # Replace with your collection name
+collection = db["produ"]  # Replace with your collection name
 
 # Output file
 FILE_NAME = "mm_lafleur_reviews.csv"
@@ -30,8 +30,10 @@ def export_reviews():
         writer = csv.writer(f, delimiter="|", quotechar='"')
         writer.writerow(csv_headers)
 
-        for doc in collection.find():
-            # Extract values
+        # Only export products with at least 1 review
+        query = {"total_number_of_reviews": {"$gt": 0}}
+
+        for doc in collection.find(query):
             row = [
                 "MMLaFleur",
                 clean_text(doc.get("product_url", "")),
